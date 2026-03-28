@@ -215,6 +215,18 @@ Caddy will listen on `50443` instead of `443`. Port `80` is always bound for ACM
 | `JWT_EXPIRY_DAYS` | `30` | Session duration. |
 | `CORS_ORIGINS` | `*` | Comma-separated allowed origins. |
 
+## Development with Claude Code
+
+The repo includes a `CLAUDE.md` file — a persistent instruction set for [Claude Code](https://claude.ai/code) (the AI coding assistant). It describes the full project architecture, conventions, and step-by-step guides for common tasks.
+
+If you use Claude Code, it will automatically load `CLAUDE.md` at the start of every session and understand:
+- How to add a new action (template + validation rules)
+- How to add a PWA feature (folder structure, patterns)
+- All API endpoints and their auth requirements
+- Docker / Caddy / ntfy configuration decisions
+
+Useful when you want to customize AlertPilot for your own setup — add actions for your specific services, integrate with your own tools, or extend the PWA — without needing to re-explain the codebase each time.
+
 ## License
 
 MIT
