@@ -1,0 +1,90 @@
+# AlertPilot — one-command stack
+# Usage: docker compose up -d
+#
+# Stack:
+#   ntfy     — pub/sub push server
+#   pwa      — React PWA (built, served by nginx)
+#   runner   — Python action runner (FastAPI)
+#   caddy    — reverse proxy + auto TLS
+#
+# Set env vars or create .env file:
+#   DOMAIN=alerts.your.host
+#   RUNNER_SECRET=your-secret-here
+#   NTFY_BOT_TOKEN=tk_...
+
+services:
+
+  ntfy:
+    image: binwiederhier/ntfy:latest
+    restart: unless-stopped
+    command: serve
+    environment:
+      NTFY_BASE_URL: ${NTFY_BASE_URL:-http://localhost}
+      NTFY_UPSTREAM_BASE_URL: "https://ntfy.sh"
+      NTFY_AUTH_DEFAULT_ACCESS: deny-all
+      NTFY_BEHIND_PROXY: "true"
+      NTFY_WEB_PUSH_PUBLIC_KEY: ${NTFY_WEB_PUSH_PUBLIC_KEY:-}
+      NTFY_WEB_PUSH_PRIVATE_KEY: ${NTFY_WEB_PUSH_PRIVATE_KEY:-}
+      NTFY_WEB_PUSH_FILE: /var/lib/ntfy/webpush.db
+    volumes:
+      - ./ntfy.yml:/etc/ntfy/server.yml:ro
+      - ntfy-data:/var/lib/ntfy   # auth.db + cache.db + webpush.db — all in one volume
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/v1/health"]
+      interval: 30s
+
+  runner:
+    build: ./runner
+    restart: unless-stopped
+    environment:
+      NTFY_URL: http://ntfy:80
+      NTFY_OPS_TOPIC: ${NTFY_OPS_TOPIC:-ops-alerts}
+      NTFY_DEV_TOPIC: ${NTFY_DEV_TOPIC:-dev-alerts}
+      NTFY_TOKEN: ${NTFY_BOT_TOKEN:-}
+      RUNNER_SECRET: ${RUNNER_SECRET:-changeme}
+      SERVICE_WHITELIST: ${SERVICE_WHITELIST:-nginx,api,worker,postgres,redis}
+      ACTION_TIMEOUT: ${ACTION_TIMEOUT:-30}
+      RUNBOOKS_DIR: ${RUNBOOKS_DIR:-/app/runbooks}
+    volumes:
+      - ./runner/runbooks:/app/runbooks:ro
+      - runner-data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      ntfy:
+        condition: service_healthy
+
+  pwa:
+    build:
+      context: ./pwa
+      args:
+        VITE_NTFY_URL: ${VITE_NTFY_URL:-}
+        VITE_RUNNER_URL: ${VITE_RUNNER_URL:-}
+        VITE_OPS_TOPIC: ${NTFY_OPS_TOPIC:-ops-alerts}
+        VITE_DEV_TOPIC: ${NTFY_DEV_TOPIC:-dev-alerts}
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
+    ports:
+      - "${WEB_PORT:-443}:${WEB_PORT:-443}"
+      - "80:80"
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+      WEB_PORT: ${WEB_PORT:-}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy-entrypoint.sh:/entrypoint.sh:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - ntfy
+      - runner
+      - pwa
+
+volumes:
+  ntfy-data:
+  runner-data:
+  caddy-data:
+  caddy-config:

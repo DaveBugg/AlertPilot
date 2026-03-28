@@ -1,0 +1,51 @@
+# ntfy server config — /etc/ntfy/server.yml
+# Docs: https://docs.ntfy.sh/config/
+
+# base-url is set via NTFY_BASE_URL env var in docker-compose.yml
+# Uncomment to override: base-url: https://alerts.your.host/ntfy
+
+# Auth — deny all by default, grant per user
+auth-file: /var/lib/ntfy/user.db
+auth-default-access: deny-all
+
+# Web UI (optional — PWA replaces it)
+enable-web-app: false
+
+# Upstream for iOS push relay (ntfy.sh acts as relay)
+upstream-base-url: "https://ntfy.sh"
+
+# --- Web Push (VAPID) ---
+# Required for background push notifications to phones/desktops.
+# Generate keys: docker compose exec ntfy ntfy webpush keys
+# Then paste below or set via env vars NTFY_WEB_PUSH_PUBLIC_KEY / NTFY_WEB_PUSH_PRIVATE_KEY.
+# web-push-public-key: <paste here>
+# web-push-private-key: <paste here>
+# web-push-file stores push subscriptions
+web-push-file: /var/lib/ntfy/webpush.db
+
+# Cache — store messages for offline clients
+cache-file: /var/lib/ntfy/cache.db
+cache-duration: 12h
+
+# Limits (per visitor)
+visitor-message-daily-limit: 1000
+attachment-total-size-limit: 0   # disable attachments
+
+# --- Access setup (run once after deploy) ---
+#
+# docker compose exec ntfy ntfy user add --role=admin admin
+# docker compose exec ntfy ntfy user add ops-user
+# docker compose exec ntfy ntfy user add dev-user
+# docker compose exec ntfy ntfy user add bot
+#
+# docker compose exec ntfy ntfy access ops-user 'ops-alerts' rw
+# docker compose exec ntfy ntfy access ops-user 'dev-alerts' ro
+# docker compose exec ntfy ntfy access dev-user 'dev-alerts' ro
+# docker compose exec ntfy ntfy access bot 'ops-alerts' wo
+# docker compose exec ntfy ntfy access bot 'dev-alerts' wo
+#
+# docker compose exec ntfy ntfy token add bot
+#
+# --- Web Push setup (one-time) ---
+# docker compose exec ntfy ntfy webpush keys
+# Copy the public and private keys to .env

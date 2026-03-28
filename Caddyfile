@@ -1,0 +1,26 @@
+# AlertPilot — Reverse Proxy (Caddy)
+#
+# CADDY_ADDRESS is built by caddy-entrypoint.sh:
+#   DOMAIN=localhost              → "localhost"         (HTTP, no TLS)
+#   DOMAIN=alerts.host            → "alerts.host"       (auto Let's Encrypt)
+#   DOMAIN=alerts.host WEB_PORT=50443 → "alerts.host:50443" (TLS on custom port)
+#
+# Caddy handles ACME (Let's Encrypt) automatically when a real domain is set.
+# No certbot needed — Caddy renews certificates on its own.
+
+{$CADDY_ADDRESS} {
+    # ntfy pub/sub (WebSocket + HTTP)
+    handle_path /ntfy/* {
+        reverse_proxy ntfy:80
+    }
+
+    # Action runner API
+    handle_path /runner/* {
+        reverse_proxy runner:8000
+    }
+
+    # PWA static files (catch-all)
+    handle {
+        reverse_proxy pwa:80
+    }
+}

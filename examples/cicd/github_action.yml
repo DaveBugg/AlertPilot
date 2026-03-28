@@ -1,0 +1,32 @@
+# Example: GitHub Actions step to notify on deploy status
+# Add this step at the end of your deploy workflow
+
+name: Notify AlertPilot
+on:
+  workflow_run:
+    workflows: ["Deploy"]
+    types: [completed]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send alert
+        run: |
+          if [ "${{ github.event.workflow_run.conclusion }}" = "success" ]; then
+            TITLE="Deploy succeeded: ${{ github.repository }}"
+            PRIORITY=2
+            TAGS="white_check_mark,deploy"
+          else
+            TITLE="Deploy FAILED: ${{ github.repository }}"
+            PRIORITY=5
+            TAGS="x,deploy"
+          fi
+
+          curl -s \
+            -H "Title: ${TITLE}" \
+            -H "Priority: ${PRIORITY}" \
+            -H "Tags: ${TAGS}" \
+            -H "Authorization: Bearer ${{ secrets.NTFY_TOKEN }}" \
+            -d "Branch: ${{ github.event.workflow_run.head_branch }}\nCommit: ${{ github.event.workflow_run.head_sha }}" \
+            "${{ secrets.NTFY_URL }}/dev-alerts"

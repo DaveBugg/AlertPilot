@@ -1,0 +1,28 @@
+# Example: Home Assistant automation to send alerts to AlertPilot
+# Add to your automations.yaml
+
+- alias: "AlertPilot: High Temperature Alert"
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.server_room_temperature
+      above: 28
+  action:
+    - service: rest_command.alertpilot_notify
+      data:
+        title: "Temperature {{ states('sensor.server_room_temperature') }}°C in server room"
+        message: "Server room temperature is above 28°C. Consider turning on AC."
+        priority: "4"
+        tags: "thermometer,warning"
+
+# Add to configuration.yaml:
+# rest_command:
+#   alertpilot_notify:
+#     url: "https://alerts.your.host/ntfy/ops-alerts"
+#     method: POST
+#     headers:
+#       Title: "{{ title }}"
+#       Priority: "{{ priority }}"
+#       Tags: "{{ tags }}"
+#       Authorization: "Bearer YOUR_NTFY_TOKEN"
+#     payload: "{{ message }}"
+#     content_type: "text/plain"

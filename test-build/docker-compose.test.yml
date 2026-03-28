@@ -1,0 +1,72 @@
+# AlertPilot — TEST BUILD
+# Runs everything on localhost with no TLS for local testing.
+#
+# Usage:
+#   cd test-build
+#   docker compose -f docker-compose.test.yml up --build
+#
+# Then open http://localhost:8080
+
+services:
+
+  ntfy:
+    image: binwiederhier/ntfy:latest
+    restart: unless-stopped
+    command: serve
+    environment:
+      NTFY_BASE_URL: http://localhost:8080
+      NTFY_AUTH_DEFAULT_ACCESS: read-write     # Open access for testing
+      NTFY_BEHIND_PROXY: "true"
+      NTFY_ENABLE_WEB_APP: "false"
+      NTFY_CACHE_FILE: /var/lib/ntfy/cache.db  # Persist messages for ?since= replay
+      NTFY_CACHE_DURATION: 12h
+    volumes:
+      - ntfy-test-data:/var/lib/ntfy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/v1/health"]
+      interval: 10s
+      start_period: 5s
+
+  runner:
+    build: ../runner
+    restart: unless-stopped
+    environment:
+      NTFY_URL: http://ntfy:80
+      NTFY_OPS_TOPIC: ops-alerts
+      NTFY_DEV_TOPIC: dev-alerts
+      NTFY_TOKEN: ""                         # No auth for testing
+      RUNNER_SECRET: test-secret
+      SERVICE_WHITELIST: nginx,api,worker,postgres,redis
+      ACTION_TIMEOUT: 10
+      RUNBOOKS_DIR: /app/runbooks
+      AUTH_DB_PATH: /app/data/auth.json
+      JWT_EXPIRY_DAYS: 30
+    volumes:
+      - ../runner/runbooks:/app/runbooks:ro
+      - runner-test-data:/app/data
+    depends_on:
+      ntfy:
+        condition: service_healthy
+
+  pwa:
+    build:
+      context: ../pwa
+      args:
+        VITE_NTFY_URL: "http://localhost:8080/ntfy"
+        VITE_RUNNER_URL: "http://localhost:8080/runner"
+        VITE_OPS_TOPIC: "ops-alerts"
+        VITE_DEV_TOPIC: "dev-alerts"
+    restart: unless-stopped
+
+  # Caddy for local testing (HTTP only, no TLS)
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "${TEST_PORT:-8080}:80"
+    volumes:
+      - ./Caddyfile.test:/etc/caddy/Caddyfile:ro
+
+volumes:
+  ntfy-test-data:
+  runner-test-data:

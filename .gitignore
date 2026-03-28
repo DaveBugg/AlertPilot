@@ -1,0 +1,39 @@
+# Environment — never commit secrets
+.env
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Node
+pwa/node_modules/
+pwa/dist/
+
+# Runtime data (Docker volumes map here)
+runner/data/
+*.db
+*.sqlite
+auth.json
+
+# Test artifacts
+test-build/data/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+.vscode/
+*.swp
+
+# Caddy
+caddy-data/
+caddy-config/
+
+# Claude Code local settings
+.claude/settings.local.json

@@ -1,0 +1,16 @@
+:80 {
+    # ntfy
+    handle_path /ntfy/* {
+        reverse_proxy ntfy:80
+    }
+
+    # Runner API
+    handle_path /runner/* {
+        reverse_proxy runner:8000
+    }
+
+    # PWA
+    handle {
+        reverse_proxy pwa:80
+    }
+}
